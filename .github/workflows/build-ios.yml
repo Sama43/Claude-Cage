@@ -1,0 +1,47 @@
+name: Build Cage iOS (Unsigned IPA)
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci --prefix ui
+
+      - name: Build iOS xcframework & unsigned Release app
+        run: |
+          bash mobile/build.sh ios
+          xcodebuild -project mobile/ios/CageMobile.xcodeproj \
+            -target CageMobile -sdk iphoneos -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            SYMLINKED_FRAMEWORKS=NO \
+            SYMROOT="$PWD/mobile/.build/ios/products" \
+            OBJROOT="$PWD/mobile/.build/ios/obj" build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p _out/Payload
+          cp -R mobile/.build/ios/products/Release-iphoneos/CageMobile.app _out/Payload/
+          (cd _out && zip -qr CageMobile-unsigned.ipa Payload)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cage-ios-unsigned-ipa
+          path: _out/CageMobile-unsigned.ipa
+          retention-days: 14
