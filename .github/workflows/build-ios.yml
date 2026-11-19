@@ -1,10 +1,21 @@
 name: Build Cage iOS (Unsigned IPA)
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 选择 macOS Runner（避开拥堵的 macos-15 arm64）
+        required: true
+        default: macos-15-intel
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-26
+          - macos-26-intel
+          - macos-15
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
